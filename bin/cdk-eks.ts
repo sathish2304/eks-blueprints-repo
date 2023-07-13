@@ -7,6 +7,11 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 
 const app = new cdk.App();
 
+const bootstrapRepo: blueprints.ApplicationRepository = {
+    repoUrl: 'https://github.com/sathish2304/eks-blueprints-repo.git',
+    targetRevision: "main"
+}
+
 
 const addOns: Array<blueprints.ClusterAddOn> = [
 	    new blueprints.addons.EbsCsiDriverAddOn(),
@@ -16,9 +21,8 @@ const addOns: Array<blueprints.ClusterAddOn> = [
 	    new blueprints.addons.AwsLoadBalancerControllerAddOn(),
 	    new blueprints.addons.ArgoCDAddOn({
                 bootstrapRepo: {
-                    repoUrl: 'https://github.com/sathish2304/eks-blueprints-repo.git',
+                    ...bootstrapRepo,
                     path: 'manifests/StorageClass',
-                     targetRevision: "main",
                      },})
 ];
 
