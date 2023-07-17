@@ -4,7 +4,4 @@ metadata:
   name: aws-ebs-sc
 provisioner: ebs.csi.aws.com
 parameters:
-  tagSpecification_1: "App=TestApp"
-  tagSpecification_2: "pvcnamespace={{ .PVCNamespace }}"
-  tagSpecification_3: "pvcname={{ .PVCName }}"
-  tagSpecification_4: "pvname={{ .PVName }}"
+  tagSpecification_1: "EKSPVBackup=true"
