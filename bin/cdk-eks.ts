@@ -8,7 +8,8 @@ import * as backup from 'aws-cdk-lib/aws-backup';
 import { Duration } from 'aws-cdk-lib';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as events from 'aws-cdk-lib/aws-events'
+import * as events from 'aws-cdk-lib/aws-events';
+import * as efs from 'aws-cdk-lib/aws-efs';
 
 
 const app = new cdk.App();
@@ -19,7 +20,6 @@ const drregion = 'us-east-2';
 const bootstrapRepo: blueprints.ApplicationRepository = {
     repoUrl: 'https://github.com/sathish2304/eks-blueprints-repo'
 }
-
 
 const addOns: Array<blueprints.ClusterAddOn> = [
 	    new blueprints.addons.EbsCsiDriverAddOn(),
@@ -63,16 +63,15 @@ const clusterProvider = new blueprints.GenericClusterProvider({
     ]
 });
 
-//const stack = new cdk.Stack(app, stack', { env: { region: drregion, account: account }, crossRegionReferences: true } );
-
 const stack = blueprints.EksBlueprint.builder()
+    .resourceProvider(blueprints.GlobalResources.Vpc, new blueprints.VpcProvider())
+    .resourceProvider("efs-file-system", new blueprints.CreateEfsFileSystemProvider({name: "efs-file-system"}))
     .account(account)
     .clusterProvider(clusterProvider)
     .region(region)
     .addOns(...addOns)
     .build(app, 'eks-blueprint');
-
-
+    
 // Create a Multi-region KMS key using CfnKey
 const keyPolicy = new iam.PolicyDocument({
   statements: [new iam.PolicyStatement({
@@ -92,10 +91,12 @@ const kmsKey = new kms.CfnKey(stack, 'KMSKey', {
     pendingWindowInDays: 30
 });
 
-// Create a AWS Backup Vault
+
+// Create a AWS Backup Vault in Primary Region 
 const backupstack = new cdk.Stack(app, 'backupstack', { env: { region: region, account: account }, crossRegionReferences: true } );
 const backupVault = new backup.BackupVault(backupstack, 'BackupVault', {backupVaultName: 'EKSBackupVault'});
 
+// Create a AWS Backup Vault in Disaster Recovery Region
 const drstack = new cdk.Stack(app, 'drstack', { env: { region: drregion, account: account }, crossRegionReferences: true } );
 const drbackupVault = new backup.BackupVault(drstack, 'BackupVault', {backupVaultName: 'EKSBackupVault'});
 const cfnReplicaKey = new kms.CfnReplicaKey(drstack, 'KMSKey', {
@@ -105,7 +106,6 @@ const cfnReplicaKey = new kms.CfnReplicaKey(drstack, 'KMSKey', {
 
 // Create a AWS Backup Backup plan to backup resources based on Tags
 const backupPlan = new backup.BackupPlan(backupstack, 'BackupPlan', {backupPlanName: 'EKSBackupPlan', backupVault: backupVault });
-//backupPlan.addRule(backup.BackupPlanRule.daily(backupVault));
 backupPlan.addRule(new backup.BackupPlanRule({
   copyActions: [{
     destinationBackupVault: drbackupVault,
@@ -120,6 +120,7 @@ backupPlan.addRule(new backup.BackupPlanRule({
 }));
 backupPlan.addSelection('EKSResources', {
   resources: [
-    backup.BackupResource.fromTag('EKSPVBackup', 'true'), 
+    backup.BackupResource.fromTag('EKSPVBackup', 'true'),
+    backup.BackupResource.fromTag('Name', 'eks-blueprint/efs-file-system')
   ]
 })
