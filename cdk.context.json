@@ -10,5 +10,8 @@
   "availability-zones:account=370926141865:region=us-west-1": [
     "us-west-1a",
     "us-west-1c"
-  ]
+  ],
+  "key-provider:account=370926141865:aliasName=alias/eks-blueprint:region=us-west-1": {
+    "keyId": "mrk-ec75152a2a654f79ac2b7306fb00ec5f"
+  }
 }
