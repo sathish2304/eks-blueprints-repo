@@ -22,7 +22,8 @@
   "dependencies": {
     "@aws-cdk/aws-backup": "^1.204.0",
     "@aws-quickstart/eks-blueprints": "^1.9.1",
-    "aws-cdk-lib": "2.83.1",
+    "aws-cdk-lib": "^2.83.1",
+    "aws-sdk": "^2.1464.0",
     "cdk-backup-plan": "^0.0.7",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"

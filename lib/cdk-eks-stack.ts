@@ -29,8 +29,8 @@ export class CdkEksStack extends cdk.Stack {
 	    new blueprints.addons.EbsCsiDriverAddOn(),
 	    new blueprints.addons.EfsCsiDriverAddOn(),
 	    new blueprints.addons.VpcCniAddOn(),
-	    new blueprints.addons.CoreDnsAddOn('v1.9.3-eksbuild.5'),
-	    new blueprints.addons.KubeProxyAddOn('v1.26.6-eksbuild.1'),
+	    new blueprints.addons.CoreDnsAddOn(),
+	    new blueprints.addons.KubeProxyAddOn(),
 	    new blueprints.addons.AwsLoadBalancerControllerAddOn(),
 	    new blueprints.addons.ArgoCDAddOn({
                 bootstrapRepo: {
@@ -40,7 +40,7 @@ export class CdkEksStack extends cdk.Stack {
 ];
 
 const clusterProvider = new blueprints.GenericClusterProvider({
-    version: eks.KubernetesVersion.V1_26,
+    version: eks.KubernetesVersion.V1_27,
     tags: {
         "Name": "backup-example-cluster",
         "Type": "generic-cluster"
@@ -109,17 +109,17 @@ const kmsAlias = new kms.CfnAlias(stack, 'KMSAlias', {
 
 // Create a AWS Backup Vault in Disaster Recovery Region
 const drstack = new cdk.Stack(app, 'drstack', { env: { region: drregion, account: account }, crossRegionReferences: true } );
-const drbackupVault = new backup.BackupVault(drstack, 'BackupVault', {backupVaultName: 'EKSBackupVault'});
 const cfnReplicaKey = new kms.CfnReplicaKey(drstack, 'KMSKey', {
   keyPolicy: keyPolicy,
   primaryKeyArn: kmsKey.attrArn
 })
-
-
+const replicaKey = kms.Key.fromKeyArn(drstack, 'ReplicaKey', cfnReplicaKey.attrArn);
+const drbackupVault = new backup.BackupVault(drstack, 'BackupVault', {backupVaultName: 'EKSBackupVault', encryptionKey: replicaKey  });
 
 // Create a AWS Backup Vault in Primary Region 
 const backupstack = new cdk.Stack(app, 'backupstack', { env: { region: region, account: account }, crossRegionReferences: true } );
-const backupVault = new backup.BackupVault(backupstack, 'BackupVault', {backupVaultName: 'EKSBackupVault'});
+const primaryKey = kms.Key.fromKeyArn(backupstack, 'PrimaryKey', kmsKey.attrArn);
+const backupVault = new backup.BackupVault(backupstack, 'BackupVault', {backupVaultName: 'EKSBackupVault', encryptionKey: primaryKey });
 
 
 // Create a AWS Backup Backup plan to backup resources based on Tags
